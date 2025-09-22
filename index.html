@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All-in-One Toolkit</title>
+
+    <!-- External Libraries via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gifshot@0.3.2/gifshot.min.js"></script>
+
+    <style>
+        /* --- Global Styles & Theme --- */
+        :root {
+            --bg-color: #0D0D0D;
+            --surface-color: #1A1A1A;
+            --primary-color: #A855F7; /* Purple */
+            --secondary-color: #FACC15; /* Yellow Accent */
+            --text-color: #E5E7EB;
+            --text-secondary-color: #9CA3AF;
+            --border-color: #373737;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+        }
+
+        /* --- Main App Layout --- */
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        .app-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .app-header h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+            letter-spacing: -0.5px;
+        }
+
+        #search-bar {
+            width: 100%;
+            padding: 14px 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background-color: var(--surface-color);
+            color: var(--text-color);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        #search-bar:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.3);
+        }
+
+        .category {
+            margin-top: 2.5rem;
+        }
+
+        .category-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary-color);
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 1rem;
+        }
+
+        .tool-card {
+            background-color: var(--surface-color);
+            border-radius: 16px;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+            min-height: 120px;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-color);
+        }
+
+        .tool-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+            line-height: 1;
+        }
+
+        .tool-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+        
+        @media (max-width: 600px) {
+            .tools-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+            .app-container { padding: 1rem; }
+        }
+
+        /* --- Modal for Tools --- */
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000; backdrop-filter: blur(5px);
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal.active { opacity: 1; visibility: visible; }
+        .modal-content {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 16px; width: 95%; max-width: 600px;
+            height: 90%; max-height: 90vh;
+            display: flex; flex-direction: column;
+            overflow: hidden; transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        .modal.active .modal-content { transform: scale(1); }
+        .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem 1.25rem; background-color: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .modal-title { font-size: 1.2rem; font-weight: 600; color: var(--primary-color); }
+        .modal-close {
+            background: none; border: none; color: var(--text-secondary-color);
+            font-size: 1.75rem; cursor: pointer; line-height: 1;
+        }
+        .modal-body { padding: 1.25rem; overflow-y: auto; flex-grow: 1; }
+
+        /* --- Generic Tool UI Elements --- */
+        .tool-label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-secondary-color); }
+        .tool-input, .tool-textarea, .tool-select {
+            width: 100%; padding: 12px; margin-bottom: 1rem;
+            border-radius: 8px; border: 1px solid var(--border-color);
+            background-color: var(--surface-color); color: var(--text-color); font-size: 1rem;
+        }
+        .tool-textarea { min-height: 120px; resize: vertical; }
+        .tool-button {
+            display: inline-block; width: 100%; padding: 14px; border: none;
+            border-radius: 8px; background-color: var(--primary-color);
+            color: #fff; font-size: 1rem; font-weight: 600;
+            cursor: pointer; transition: background-color 0.2s; text-align: center;
+        }
+        .tool-button:hover { background-color: #9333EA; }
+        .tool-button-secondary { background-color: var(--surface-color); color: var(--text-color); border: 1px solid var(--border-color); }
+        .tool-button-secondary:hover { background-color: var(--border-color); }
+        .tool-output {
+            margin-top: 1.25rem; padding: 1rem; background-color: var(--surface-color);
+            border-radius: 8px; white-space: pre-wrap; word-wrap: break-word;
+            min-height: 50px; border: 1px solid var(--border-color);
+        }
+        .flex-buttons { display: flex; gap: 10px; }
+
+        /* Specific Tool Styles */
+        #todo-list li, #expense-list li { list-style: none; display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: var(--surface-color); border-radius: 8px; margin-bottom: 10px; }
+        #todo-list li.completed span { text-decoration: line-through; opacity: 0.5; }
+        #habit-list .habit { display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: var(--surface-color); border-radius: 8px; margin-bottom: 10px; }
+        .calculator-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .calculator-grid button { padding: 20px; font-size: 1.25rem; border-radius: 8px; border: none; background-color: var(--surface-color); color: var(--text-color); cursor: pointer; }
+        .calculator-grid button.operator { background-color: var(--primary-color); color: white; }
+        #calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        #calendar div { text-align: center; padding: 10px 5px; background-color: var(--surface-color); border-radius: 4px; }
+        #calendar .day { cursor: pointer; transition: background-color 0.2s; }
+        #calendar .day:hover, #calendar .day.selected { background-color: var(--primary-color); }
+        #sketchpad { touch-action: none; cursor: crosshair; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>All-in-One Toolkit</h1>
+            <input type="text" id="search-bar" placeholder="Search for a tool...">
+        </header>
+        <main id="tools-container"></main>
+    </div>
+
+    <!-- Modal Structure -->
+    <div class="modal" id="tool-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-title">Tool</h2>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const tools = [
+            // Instant Tools
+            { id: 'reminder', name: 'Reminder', category: 'Instant Tools', icon: '⏰', init: initReminder },
+            { id: 'countdown', name: 'Countdown', category: 'Instant Tools', icon: '⏳', init: initCountdown },
+            { id: 'todo', name: 'To-Do List', category: 'Instant Tools', icon: '✅', init: initTodo },
+            { id: 'habit', name: 'Habit Tracker', category: 'Instant Tools', icon: '🎯', init: initHabitTracker },
+            { id: 'stopwatch', name: 'Stopwatch', category: 'Instant Tools', icon: '⏱️', init: initStopwatch },
+            
+            // File & Document Tools
+            { id: 'imgToPdf', name: 'Image to PDF', category: 'File & Document Tools', icon: '📄', init: initImgToPdf },
+            { id: 'textFileMaker', name: 'Text File Maker', category: 'File & Document Tools', icon: '✍️', init: initTextFileMaker },
+            { id: 'qrGen', name: 'QR Code Gen', category: 'File & Document Tools', icon: '📱', init: initQrGenerator },
+            { id: 'barcodeGen', name: 'Barcode Gen', category: 'File & Document Tools', icon: '📊', init: initBarcodeGenerator },
+            { id: 'tts', name: 'Text-to-Speech', category: 'File & Document Tools', icon: '🗣️', init: initTts },
+            
+            // Creativity & Media
+            { id: 'memeGen', name: 'Meme Generator', category: 'Creativity & Media', icon: '😂', init: initMemeGenerator },
+            { id: 'imgResize', name: 'Image Resizer', category: 'Creativity & Media', icon: '✂️', init: initImageResizer },
+            { id: 'bgChanger', name: 'Grayscale Image', category: 'Creativity & Media', icon: '🎨', init: initGrayscaleConverter },
+            { id: 'sketchpad', name: 'Drawing Pad', category: 'Creativity & Media', icon: '✏️', init: initSketchpad },
+            { id: 'gifMaker', name: 'GIF Maker', category: 'Creativity & Media', icon: '🖼️', init: initGifMaker },
+            
+            // Learning & Writing
+            { id: 'grammar', name: 'Grammar Check', category: 'Learning & Writing', icon: '📚', init: initGrammarChecker },
+            { id: 'counter', name: 'Word Counter', category: 'Learning & Writing', icon: '🔢', init: initWordCounter },
+            { id: 'flashcard', name: 'Flashcard Maker', category: 'Learning & Writing', icon: '🧠', init: initFlashcardMaker },
+            { id: 'dictionary', name: 'Dictionary', category: 'Learning & Writing', icon: '📙', init: initDictionary },
+            { id: 'translator', name: 'Translator', category: 'Learning & Writing', icon: '🌍', init: initTranslator },
+            
+            // Basic Utility
+            { id: 'calculator', name: 'Calculator', category: 'Basic Utility', icon: '🧮', init: initCalculator },
+            { id: 'unitConverter', name: 'Unit Converter', category: 'Basic Utility', icon: '📏', init: initUnitConverter },
+            { id: 'currency', name: 'Currency Conv.', category: 'Basic Utility', icon: '💱', init: initCurrencyConverter },
+            { id: 'expense', name: 'Expense Tracker', category: 'Basic Utility', icon: '💰', init: initExpenseTracker },
+            { id: 'calendar', name: 'Calendar/Notes', category: 'Basic Utility', icon: '📅', init: initCalendarNotes },
+        ];
+
+        const toolsContainer = document.getElementById('tools-container');
+        const searchBar = document.getElementById('search-bar');
+        const modal = document.getElementById('tool-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const modalClose = document.getElementById('modal-close');
+
+        // --- Core App Logic ---
+        function renderTools(filter = '') {
+            const groupedTools = tools.reduce((acc, tool) => {
+                acc[tool.category] = acc[tool.category] || [];
+                acc[tool.category].push(tool);
+                return acc;
+            }, {});
+
+            toolsContainer.innerHTML = '';
+            for (const category in groupedTools) {
+                const filteredTools = groupedTools[category].filter(tool => tool.name.toLowerCase().includes(filter.toLowerCase()));
+                
+                if (filteredTools.length > 0) {
+                    const categorySection = document.createElement('section');
+                    categorySection.className = 'category';
+                    categorySection.innerHTML = `<h2 class="category-title">${category}</h2>`;
+                    const grid = document.createElement('div');
+                    grid.className = 'tools-grid';
+                    
+                    filteredTools.forEach(tool => {
+                        const card = document.createElement('div');
+                        card.className = 'tool-card';
+                        card.dataset.toolId = tool.id;
+                        card.innerHTML = `<div class="tool-icon">${tool.icon}</div><div class="tool-name">${tool.name}</div>`;
+                        card.addEventListener('click', () => openModal(tool.id));
+                        grid.appendChild(card);
+                    });
+                    
+                    categorySection.appendChild(grid);
+                    toolsContainer.appendChild(categorySection);
+                }
+            }
+        }
+
+        function openModal(toolId) {
+            const tool = tools.find(t => t.id === toolId);
+            if (!tool) return;
+            modalTitle.textContent = tool.name;
+            modalBody.innerHTML = '';
+            tool.init(modalBody);
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            // Stop any running intervals when modal closes
+            if (window.activeToolInterval) {
+                clearInterval(window.activeToolInterval);
+                window.activeToolInterval = null;
+            }
+        }
+
+        searchBar.addEventListener('input', (e) => renderTools(e.target.value));
+        modalClose.addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+        
+        // Initial render
+        renderTools();
+        
+        // --- TOOL IMPLEMENTATIONS ---
+        
+        // Instant Tools
+        function initReminder(c) {
+            c.innerHTML = `<input type="text" id="rem-text" class="tool-input" placeholder="Reminder note..."><input type="number" id="rem-time" class="tool-input" placeholder="Time in minutes..."><button id="rem-btn" class="tool-button">Set Reminder</button><div id="rem-status" class="tool-output" style="display:none;"></div>`;
+            c.querySelector('#rem-btn').addEventListener('click', () => {
+                const text = c.querySelector('#rem-text').value, time = parseInt(c.querySelector('#rem-time').value, 10), status = c.querySelector('#rem-status');
+                if (!text || !time || time <= 0) { status.textContent = 'Please enter valid text and time.'; status.style.display = 'block'; return; }
+                Notification.requestPermission().then(p => { if (p === 'granted') { setTimeout(() => new Notification('Reminder!', { body: text }), time * 60 * 1000); status.textContent = `Reminder set for ${time} minutes.`; status.style.display = 'block'; } else { status.textContent = 'Notification permission denied.'; status.style.display = 'block'; }});
+            });
+        }
+        
+        function initCountdown(c) {
+            c.innerHTML = `<input type="datetime-local" id="cd-date" class="tool-input"><button id="cd-btn" class="tool-button">Start Countdown</button><div id="cd-output" class="tool-output" style="font-size: 1.5rem; text-align: center;"></div>`;
+            c.querySelector('#cd-btn').addEventListener('click', () => {
+                const target = new Date(c.querySelector('#cd-date').value).getTime(), output = c.querySelector('#cd-output');
+                if (isNaN(target)) { output.textContent = "Invalid date."; return; }
+                if (window.activeToolInterval) clearInterval(window.activeToolInterval);
+                window.activeToolInterval = setInterval(() => {
+                    const now = new Date().getTime(), dist = target - now;
+                    if (dist < 0) { clearInterval(window.activeToolInterval); output.textContent = "EXPIRED"; return; }
+                    const d = Math.floor(dist / 864e5), h = Math.floor((dist % 864e5) / 36e5), m = Math.floor((dist % 36e5) / 6e4), s = Math.floor((dist % 6e4) / 1e3);
+                    output.textContent = `${d}d ${h}h ${m}m ${s}s`;
+                }, 1000);
+            });
+        }
+        
+        function initTodo(c) {
+            c.innerHTML = `<div class="flex-buttons"><input type="text" id="todo-input" class="tool-input" placeholder="Add a new task..."><button id="add-todo-btn" class="tool-button" style="width: auto; padding: 0 20px;">Add</button></div><ul id="todo-list" style="padding:0; margin-top:1rem;"></ul>`;
+            const i = c.querySelector('#todo-input'), l = c.querySelector('#todo-list');
+            let todos = JSON.parse(localStorage.getItem('todos')) || [];
+            const save = () => localStorage.setItem('todos', JSON.stringify(todos));
+            const render = () => {
+                l.innerHTML = '';
+                todos.forEach((t, idx) => {
+                    const li = document.createElement('li');
+                    li.className = t.completed ? 'completed' : '';
+                    li.innerHTML = `<span style="cursor:pointer; flex-grow:1;">${t.text}</span><button style="background:none; border:none; color: #F87171; font-size:1.2rem; cursor:pointer;">&times;</button>`;
+                    li.querySelector('span').onclick = () => { todos[idx].completed = !t.completed; save(); render(); };
+                    li.querySelector('button').onclick = () => { todos.splice(idx, 1); save(); render(); };
+                    l.appendChild(li);
+                });
+            };
+            const add = () => { if (i.value.trim()) { todos.push({ text: i.value.trim(), completed: false }); i.value = ''; save(); render(); }};
+            c.querySelector('#add-todo-btn').onclick = add;
+            i.onkeypress = (e) => { if (e.key === 'Enter') add(); };
+            render();
+        }
+
+        function initHabitTracker(c) {
+            c.innerHTML = `<div class="flex-buttons"><input type="text" id="habit-input" class="tool-input" placeholder="Add a new habit..."><button id="add-habit-btn" class="tool-button" style="width: auto; padding: 0 20px;">Add</button></div><div id="habit-list" style="margin-top:1rem;"></div>`;
+            const i = c.querySelector('#habit-input'), l = c.querySelector('#habit-list');
+            let habits = JSON.parse(localStorage.getItem('habits_v2')) || [];
+            const save = () => localStorage.setItem('habits_v2', JSON.stringify(habits));
+            const render = () => {
+                l.innerHTML = '';
+                habits.forEach((h, idx) => {
+                    const today = new Date().toISOString().slice(0, 10), isDone = h.dates.includes(today);
+                    const el = document.createElement('div');
+                    el.className = 'habit';
+                    el.innerHTML = `<span>${h.name} (Streak: ${h.dates.length})</span><input type="checkbox" ${isDone ? 'checked' : ''}>`;
+                    el.querySelector('input').onchange = (e) => {
+                        const dateIdx = h.dates.indexOf(today);
+                        if (e.target.checked && dateIdx === -1) h.dates.push(today);
+                        else if (!e.target.checked && dateIdx > -1) h.dates.splice(dateIdx, 1);
+                        save(); render();
+                    };
+                    l.appendChild(el);
+                });
+            };
+            const add = () => { const name = i.value.trim(); if (name && !habits.find(h => h.name === name)) { habits.push({ name, dates: [] }); i.value = ''; save(); render(); }};
+            c.querySelector('#add-habit-btn').onclick = add;
+            render();
+        }
+
+        function initStopwatch(c) {
+            c.innerHTML = `<div id="sw-display" class="tool-output" style="font-size: 2.5rem; text-align: center; font-family: monospace;">00:00:00.0</div><div class="flex-buttons" style="margin-top:1rem;"><button id="sw-start" class="tool-button">Start</button><button id="sw-stop" class="tool-button tool-button-secondary">Stop</button><button id="sw-reset" class="tool-button tool-button-secondary">Reset</button></div>`;
+            const d = c.querySelector('#sw-display'); let start = 0, elapsed = 0, running = false;
+            const format = (t) => {
+                const ms = Math.floor((t % 1000) / 100), s = Math.floor((t / 1000) % 60), m = Math.floor((t / (1000 * 60)) % 60), h = Math.floor(t / (1000 * 60 * 60));
+                return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':') + '.' + ms;
+            };
+            const update = () => { if (running) d.textContent = format(Date.now() - start + elapsed); };
+            c.querySelector('#sw-start').onclick = () => { if (!running) { start = Date.now(); running = true; if (window.activeToolInterval) clearInterval(window.activeToolInterval); window.activeToolInterval = setInterval(update, 100); } };
+            c.querySelector('#sw-stop').onclick = () => { if (running) { elapsed += Date.now() - start; running = false; clearInterval(window.activeToolInterval); window.activeToolInterval = null; } };
+            c.querySelector('#sw-reset').onclick = () => { elapsed = 0; start = Date.now(); d.textContent = format(0); if (!running) update(); };
+        }
+        
+        // File & Document Tools
+        function initImgToPdf(c) {
+            c.innerHTML = `<label class="tool-label">Select an image:</label><input type="file" id="img-to-pdf-input" class="tool-input" accept="image/*"><button id="img-to-pdf-btn" class="tool-button" style="margin-top:1rem;">Convert to PDF</button>`;
+            c.querySelector('#img-to-pdf-btn').addEventListener('click', () => {
+                const f = c.querySelector('#img-to-pdf-input').files[0]; if (!f) { alert('Please select an image.'); return; }
+                const reader = new FileReader();
+                reader.onload = e => { const img = new Image(); img.src = e.target.result; img.onload = () => { const { jsPDF } = window.jspdf; const pdf = new jsPDF({ o: img.width > img.height ? 'l' : 'p', u: 'px', f: [img.width, img.height] }); pdf.addImage(img, 'JPEG', 0, 0, img.width, img.height); pdf.save('image.pdf'); };};
+                reader.readAsDataURL(f);
+            });
+        }
+        
+        function initTextFileMaker(c) {
+            c.innerHTML = `<textarea class="tool-textarea" id="tfm-content" placeholder="Write content for your text file..."></textarea><input type="text" id="tfm-filename" class="tool-input" placeholder="filename.txt" value="document.txt"><button id="tfm-btn" class="tool-button">Download .txt File</button>`;
+            c.querySelector('#tfm-btn').onclick = () => {
+                const content = c.querySelector('#tfm-content').value, filename = c.querySelector('#tfm-filename').value;
+                const blob = new Blob([content], { type: 'text/plain' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+            };
+        }
+        
+        function initQrGenerator(c) {
+            c.innerHTML = `<input type="text" id="qr-input" class="tool-input" placeholder="Enter text or URL"><button id="qr-btn" class="tool-button">Generate</button><div id="qr-output" style="margin-top: 1.5rem; text-align: center; background: white; padding: 10px; border-radius: 8px; min-height: 150px;"></div>`;
+            c.querySelector('#qr-btn').onclick = () => { const text = c.querySelector('#qr-input').value.trim(), o = c.querySelector('#qr-output'); if (text) { o.innerHTML = ''; new QRCode(o, text); } };
+        }
+        
+        function initBarcodeGenerator(c) {
+            c.innerHTML = `<input type="text" id="bc-input" class="tool-input" placeholder="Enter data for barcode"><button id="bc-btn" class="tool-button">Generate</button><div style="text-align:center; margin-top:1.5rem;"><svg id="bc-output"></svg></div>`;
+            c.querySelector('#bc-btn').onclick = () => { const text = c.querySelector('#bc-input').value.trim(); if (text) JsBarcode("#bc-output", text, { background: 'transparent', lineColor: '#fff', margin: 10 }); };
+        }
+        
+        function initTts(c) {
+            c.innerHTML = `<textarea id="tts-input" class="tool-textarea" placeholder="Type text to speak..."></textarea><button id="tts-btn" class="tool-button">Speak</button>`;
+            c.querySelector('#tts-btn').onclick = () => { const text = c.querySelector('#tts-input').value.trim(); if (text) { const u = new SpeechSynthesisUtterance(text); speechSynthesis.speak(u); } };
+        }
+
+        // Creativity & Media
+        function initMemeGenerator(c) {
+            c.innerHTML = `<input type="file" id="meme-img" class="tool-input" accept="image/*"><input type="text" id="meme-top" class="tool-input" placeholder="Top text"><input type="text" id="meme-bottom" class="tool-input" placeholder="Bottom text"><canvas id="meme-canvas" style="width:100%; border-radius:8px; background-color:var(--surface-color);"></canvas><button id="meme-dl" class="tool-button" style="margin-top:1rem;">Download</button>`;
+            const i = c.querySelector('#meme-img'), tt = c.querySelector('#meme-top'), bt = c.querySelector('#meme-bottom'), cv = c.querySelector('#meme-canvas'), ctx = cv.getContext('2d'); let img = null;
+            const draw = () => {
+                if (!img) return;
+                cv.width = img.width; cv.height = img.height; ctx.drawImage(img, 0, 0);
+                ctx.font = `bold ${img.width / 10}px Impact`; ctx.fillStyle = 'white'; ctx.strokeStyle = 'black'; ctx.lineWidth = img.width / 200; ctx.textAlign = 'center';
+                ctx.fillText(tt.value.toUpperCase(), cv.width / 2, cv.height * 0.15); ctx.strokeText(tt.value.toUpperCase(), cv.width / 2, cv.height * 0.15);
+                ctx.fillText(bt.value.toUpperCase(), cv.width / 2, cv.height * 0.9); ctx.strokeText(bt.value.toUpperCase(), cv.width / 2, cv.height * 0.9);
+            };
+            i.onchange = e => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = ev => { img = new Image(); img.onload = draw; img.src = ev.target.result; }; r.readAsDataURL(f); } };
+            [tt, bt].forEach(el => el.oninput = draw);
+            c.querySelector('#meme-dl').onclick = () => { if (!img) { alert('Select an image'); return; } const a = document.createElement('a'); a.download = 'meme.png'; a.href = cv.toDataURL(); a.click(); };
+        }
+        
+        function initImageResizer(c) {
+            c.innerHTML = `<input type="file" id="res-img" class="tool-input" accept="image/*"><div class="flex-buttons"><input type="number" id="res-w" class="tool-input" placeholder="Width"><input type="number" id="res-h" class="tool-input" placeholder="Height"></div><canvas id="res-canvas" style="display:none;"></canvas><button id="res-dl" class="tool-button">Resize & Download</button>`;
+            const i = c.querySelector('#res-img'), wi = c.querySelector('#res-w'), hi = c.querySelector('#res-h'), cv = c.querySelector('#res-canvas'), ctx = cv.getContext('2d'); let oImg = null;
+            i.onchange = e => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = ev => { oImg = new Image(); oImg.onload = () => { wi.value = oImg.width; hi.value = oImg.height; }; oImg.src = ev.target.result; }; r.readAsDataURL(f); }};
+            c.querySelector('#res-dl').onclick = () => {
+                if (!oImg) { alert('Select image'); return; } const w = parseInt(wi.value), h = parseInt(hi.value); if (!w || !h) { alert('Enter dimensions'); return; }
+                cv.width = w; cv.height = h; ctx.drawImage(oImg, 0, 0, w, h);
+                const a = document.createElement('a'); a.download = 'resized.png'; a.href = cv.toDataURL(); a.click();
+            };
+        }
+        
+        function initGrayscaleConverter(c) {
+            c.innerHTML = `<input type="file" id="gray-img" class="tool-input" accept="image/*"><canvas id="gray-canvas" style="width:100%; border-radius:8px; background-color:var(--surface-color);"></canvas><button id="gray-dl" class="tool-button" style="margin-top:1rem;">Download Grayscale</button>`;
+            const i = c.querySelector('#gray-img'), cv = c.querySelector('#gray-canvas'), ctx = cv.getContext('2d'); let img = null;
+            i.onchange = e => {
+                const f = e.target.files[0]; if (!f) return;
+                const r = new FileReader(); r.onload = ev => { img = new Image(); img.onload = () => {
+                    cv.width = img.width; cv.height = img.height; ctx.drawImage(img, 0, 0);
+                    const d = ctx.getImageData(0, 0, cv.width, cv.height);
+                    for (let i = 0; i < d.data.length; i += 4) { const avg = (d.data[i] + d.data[i+1] + d.data[i+2]) / 3; d.data[i] = d.data[i+1] = d.data[i+2] = avg; }
+                    ctx.putImageData(d, 0, 0);
+                }; img.src = ev.target.result; }; r.readAsDataURL(f);
+            };
+            c.querySelector('#gray-dl').onclick = () => { if (!img) { alert('Select image'); return; } const a = document.createElement('a'); a.download = 'grayscale.png'; a.href = cv.toDataURL(); a.click(); };
+        }
+        
+        function initSketchpad(c) {
+            c.innerHTML = `<div class="flex-buttons" style="margin-bottom:1rem;"><input type="color" id="sk-color" value="#A855F7"><button id="sk-clear" class="tool-button tool-button-secondary">Clear</button><button id="sk-dl" class="tool-button">Download</button></div><canvas id="sketchpad" style="width:100%; height: 300px; border-radius:8px; background-color:var(--surface-color);"></canvas>`;
+            const cv = c.querySelector('#sketchpad'), clr = c.querySelector('#sk-color'), ctx = cv.getContext('2d');
+            const resize = () => { cv.width = cv.offsetWidth; cv.height = cv.offsetHeight; }; resize(); window.addEventListener('resize', resize);
+            let drawing = false, lastX, lastY;
+            const start = e => { drawing = true; [lastX, lastY] = getPos(e); };
+            const draw = e => { if (!drawing) return; e.preventDefault(); const [x,y] = getPos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x,y); ctx.strokeStyle = clr.value; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.stroke(); [lastX, lastY] = [x,y]; };
+            const stop = () => drawing = false;
+            const getPos = e => { const rect = cv.getBoundingClientRect(); return e.touches ? [e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top] : [e.clientX - rect.left, e.clientY - rect.top]; };
+            ['mousedown', 'touchstart'].forEach(ev => cv.addEventListener(ev, start));
+            ['mousemove', 'touchmove'].forEach(ev => cv.addEventListener(ev, draw));
+            ['mouseup', 'mouseleave', 'touchend'].forEach(ev => cv.addEventListener(ev, stop));
+            c.querySelector('#sk-clear').onclick = () => ctx.clearRect(0, 0, cv.width, cv.height);
+            c.querySelector('#sk-dl').onclick = () => { const a = document.createElement('a'); a.download = 'sketch.png'; a.href = cv.toDataURL(); a.click(); };
+        }
+        
+        function initGifMaker(c) {
+            c.innerHTML = `<label class="tool-label">Select multiple images:</label><input type="file" id="gif-imgs" class="tool-input" accept="image/*" multiple><div id="gif-output" class="tool-output" style="text-align:center;"></div>`;
+            c.querySelector('#gif-imgs').onchange = e => {
+                const files = Array.from(e.target.files), o = c.querySelector('#gif-output');
+                if (files.length < 2) { o.textContent = "Select at least 2 images."; return; }
+                o.textContent = "Generating GIF...";
+                gifshot.createGIF({ images: files, gifWidth: 300, gifHeight: 300 }, obj => {
+                    if (!obj.error) { const img = document.createElement('img'); img.src = obj.image; img.style.maxWidth = '100%'; o.innerHTML = ''; o.appendChild(img); }
+                    else { o.textContent = "Error: Could not create GIF."; }
+                });
+            };
+        }
+
+        // Learning & Writing
+        function initGrammarChecker(c) {
+            c.innerHTML = `<textarea id="gc-text" class="tool-textarea" placeholder="Paste text here..."></textarea><button id="gc-btn" class="tool-button">Check</button><div id="gc-output" class="tool-output"></div>`;
+            c.querySelector('#gc-btn').onclick = () => {
+                let text = c.querySelector('#gc-text').value; let corrections = [];
+                // Simple checks
+                if (/\s{2,}/.test(text)) { text = text.replace(/\s{2,}/g, ' '); corrections.push("Removed double spaces."); }
+                if (/\bi\b/.test(text)) { text = text.replace(/\bi\b/g, 'I'); corrections.push("Corrected 'i' to 'I'."); }
+                c.querySelector('#gc-output').textContent = `Corrected Text:\n\n${text}\n\nChanges: ${corrections.join(' ') || 'None.'}`;
+            };
+        }
+        
+        function initWordCounter(c) {
+            c.innerHTML = `<textarea id="wc-text" class="tool-textarea" placeholder="Paste your text here..."></textarea><div id="wc-output" class="tool-output">Words: 0 | Characters: 0</div>`;
+            c.querySelector('#wc-text').addEventListener('input', e => { const t = e.target.value; c.querySelector('#wc-output').textContent = `Words: ${t.trim().split(/\s+/).filter(w=>w).length} | Characters: ${t.length}`; });
+        }
+        
+        function initFlashcardMaker(c) {
+            c.innerHTML = `<input type="text" id="fc-deck" class="tool-input" placeholder="Deck Name"><input type="text" id="fc-front" class="tool-input" placeholder="Front (Question)"><textarea id="fc-back" class="tool-textarea" placeholder="Back (Answer)"></textarea><button id="fc-add" class="tool-button">Add Card</button><div id="fc-status" class="tool-output"></div>`;
+            c.querySelector('#fc-add').onclick = () => {
+                const deck = c.querySelector('#fc-deck').value.trim(), front = c.querySelector('#fc-front').value.trim(), back = c.querySelector('#fc-back').value.trim(), s = c.querySelector('#fc-status');
+                if (!deck || !front || !back) { s.textContent = "Please fill all fields."; return; }
+                let decks = JSON.parse(localStorage.getItem('flashcardDecks')) || {};
+                if (!decks[deck]) decks[deck] = [];
+                decks[deck].push({ front, back });
+                localStorage.setItem('flashcardDecks', JSON.stringify(decks));
+                c.querySelector('#fc-front').value = ''; c.querySelector('#fc-back').value = ''; s.textContent = `Card added to "${deck}"!`;
+            };
+        }
+        
+        function initDictionary(c) {
+            const words = { 'apple': 'A fruit.', 'computer': 'An electronic device.', 'galaxy': 'A system of millions or billions of stars.', 'javascript': 'A programming language.' };
+            c.innerHTML = `<input type="text" id="dict-input" class="tool-input" placeholder="Search for a word..."><div id="dict-output" class="tool-output"></div>`;
+            c.querySelector('#dict-input').oninput = e => c.querySelector('#dict-output').textContent = words[e.target.value.toLowerCase()] || 'Word not found.';
+        }
+        
+        function initTranslator(c) {
+            const dict = { 'hello': 'hola', 'world': 'mundo', 'goodbye': 'adiós', 'cat': 'gato', 'dog': 'perro' };
+            c.innerHTML = `<textarea id="trans-input" class="tool-textarea" placeholder="Enter English words..."></textarea><div id="trans-output" class="tool-output"></div>`;
+            c.querySelector('#trans-input').oninput = e => {
+                const words = e.target.value.toLowerCase().trim().split(/\s+/);
+                c.querySelector('#trans-output').textContent = words.map(w => dict[w] || '?').join(' ');
+            };
+        }
+        
+        // Basic Utility
+        function initCalculator(c) {
+            c.innerHTML = `<div class="tool-output" id="calc-display" style="text-align:right; font-size: 2rem; min-height: 70px;">0</div><div class="calculator-grid"><button>AC</button><button>(</button><button>)</button><button class="operator">/</button><button>7</button><button>8</button><button>9</button><button class="operator">*</button><button>4</button><button>5</button><button>6</button><button class="operator">-</button><button>1</button><button>2</button><button>3</button><button class="operator">+</button><button>0</button><button>.</button><button>DEL</button><button class="operator">=</button></div>`;
+            const d = c.querySelector('#calc-display'); let input = '';
+            c.querySelector('.calculator-grid').onclick = e => {
+                if (e.target.tagName !== 'BUTTON') return; const val = e.target.textContent;
+                if (val === 'AC') { input = ''; d.textContent = '0'; }
+                else if (val === 'DEL') { input = input.slice(0, -1); d.textContent = input || '0'; }
+                else if (val === '=') { try { d.textContent = eval(input.replace(/[^-()\d/*+.]/g, '')); input = d.textContent; } catch { d.textContent = 'Error'; input = ''; } }
+                else { if (d.textContent === '0' || d.textContent === 'Error') input = ''; input += val; d.textContent = input; }
+            };
+        }
+
+        function initUnitConverter(c) {
+            c.innerHTML = `<select id="uc-cat" class="tool-select"><option value="len">Length</option><option value="w">Weight</option><option value="temp">Temperature</option></select><div class="flex-buttons"><input type="number" id="uc-input" class="tool-input" placeholder="Input"><select id="uc-from" class="tool-select"></select></div><div class="flex-buttons"><div id="uc-output" class="tool-output" style="flex-grow:1; margin-top:0;">Output</div><select id="uc-to" class="tool-select"></select></div>`;
+            const cat = c.querySelector('#uc-cat'), i = c.querySelector('#uc-input'), o = c.querySelector('#uc-output'), f = c.querySelector('#uc-from'), t = c.querySelector('#uc-to');
+            const units = { len: {m:1, km:1000, cm:0.01, mi:1609.34, ft:0.3048}, w: {kg:1, g:0.001, lb:0.453592, oz:0.0283495}, temp: {c:1, f:1, k:1} };
+            const populate = () => { const u = units[cat.value]; f.innerHTML = t.innerHTML = Object.keys(u).map(k => `<option value="${k}">${k}</option>`).join(''); };
+            const convert = () => {
+                const v = parseFloat(i.value); if (isNaN(v)) { o.textContent = 'Output'; return; }
+                const from = f.value, to = t.value, type = cat.value; let result;
+                if (type === 'temp') {
+                    let cVal;
+                    if (from === 'f') cVal = (v - 32) * 5/9; else if (from === 'k') cVal = v - 273.15; else cVal = v;
+                    if (to === 'f') result = (cVal * 9/5) + 32; else if (to === 'k') result = cVal + 273.15; else result = cVal;
+                } else { const base = v * units[type][from]; result = base / units[type][to]; }
+                o.textContent = result.toFixed(3);
+            };
+            [cat, i, f, t].forEach(el => el.onchange = convert); i.oninput = convert;
+            populate();
+        }
+        
+        function initCurrencyConverter(c) {
+            const rates = {USD:1, EUR:0.92, GBP:0.8, JPY:150}; // Fixed offline rates
+            c.innerHTML = `<div class="flex-buttons"><input type="number" id="cc-input" class="tool-input" placeholder="Amount"><select id="cc-from" class="tool-select">${Object.keys(rates).map(k=>`<option>${k}</option>`)}</select></div><div class="flex-buttons"><div id="cc-output" class="tool-output" style="margin-top:0; flex-grow:1;">Output</div><select id="cc-to" class="tool-select">${Object.keys(rates).map(k=>`<option>${k}</option>`)}</select></div>`;
+            const i = c.querySelector('#cc-input'), o = c.querySelector('#cc-output'), f = c.querySelector('#cc-from'), t = c.querySelector('#cc-to');
+            const convert = () => {
+                const val = parseFloat(i.value); if (isNaN(val)) return;
+                const result = val * (rates[t.value] / rates[f.value]);
+                o.textContent = result.toFixed(2);
+            };
+            [i,f,t].forEach(el => { el.oninput = convert; el.onchange = convert; });
+        }
+        
+        function initExpenseTracker(c) {
+            c.innerHTML = `<div class="flex-buttons"><input type="text" id="ex-desc" class="tool-input" placeholder="Description"><input type="number" id="ex-amount" class="tool-input" placeholder="Amount"></div><button id="ex-add" class="tool-button">Add Expense</button><ul id="expense-list" style="padding:0; margin-top:1rem;"></ul><div id="ex-total" class="tool-output" style="font-weight:bold;">Total: $0.00</div>`;
+            const d = c.querySelector('#ex-desc'), a = c.querySelector('#ex-amount'), l = c.querySelector('#expense-list'), totalEl = c.querySelector('#ex-total');
+            let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+            const save = () => localStorage.setItem('expenses', JSON.stringify(expenses));
+            const render = () => {
+                l.innerHTML = ''; let total = 0;
+                expenses.forEach((ex, idx) => {
+                    total += ex.amount;
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span>${ex.desc}</span><span>$${ex.amount.toFixed(2)}</span>`;
+                    l.appendChild(li);
+                });
+                totalEl.textContent = `Total: $${total.toFixed(2)}`;
+            };
+            c.querySelector('#ex-add').onclick = () => { const desc = d.value.trim(), amount = parseFloat(a.value); if (desc && amount > 0) { expenses.push({ desc, amount }); d.value = ''; a.value = ''; save(); render(); }};
+            render();
+        }
+        
+        function initCalendarNotes(c) {
+            c.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;"><button id="cal-prev" class="tool-button-secondary">&lt;</button><h3 id="cal-month-year"></h3><button id="cal-next" class="tool-button-secondary">&gt;</button></div><div id="calendar"></div><div id="cal-note-area" style="margin-top:1rem; display:none;"><label id="cal-note-label" class="tool-label"></label><textarea id="cal-note-text" class="tool-textarea"></textarea><button id="cal-note-save" class="tool-button">Save Note</button></div>`;
+            const myEl = c.querySelector('#cal-month-year'), calEl = c.querySelector('#calendar'), nArea = c.querySelector('#cal-note-area'), nLabel = c.querySelector('#cal-note-label'), nText = c.querySelector('#cal-note-text');
+            let date = new Date();
+            const render = () => {
+                date.setDate(1);
+                const monthDays = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+                const firstDayIdx = date.getDay();
+                myEl.textContent = `${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()}`;
+                calEl.innerHTML = '<div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>';
+                for (let i = 0; i < firstDayIdx; i++) calEl.appendChild(document.createElement('div'));
+                for (let i = 1; i <= monthDays; i++) {
+                    const dayEl = document.createElement('div');
+                    dayEl.textContent = i; dayEl.className = 'day';
+                    dayEl.onclick = () => {
+                        const key = `note-${date.getFullYear()}-${date.getMonth()}-${i}`;
+                        nLabel.textContent = `Note for ${i}/${date.getMonth()+1}/${date.getFullYear()}`;
+                        nText.value = localStorage.getItem(key) || '';
+                        nArea.style.display = 'block';
+                        c.querySelector('#cal-note-save').onclick = () => localStorage.setItem(key, nText.value);
+                    };
+                    calEl.appendChild(dayEl);
+                }
+            };
+            c.querySelector('#cal-prev').onclick = () => { date.setMonth(date.getMonth() - 1); render(); };
+            c.querySelector('#cal-next').onclick = () => { date.setMonth(date.getMonth() + 1); render(); };
+            render();
+        }
+
+    });
+    </script>
+</body>
+</html>
